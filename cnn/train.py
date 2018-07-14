@@ -12,7 +12,6 @@ import torch.utils
 import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
 from logger import get_logger
-from torch.autograd import Variable
 from model import NetworkCIFAR as Network
 
 parser = argparse.ArgumentParser("cifar")
@@ -77,9 +76,9 @@ def main():
     valid_data = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
 
     train_queue = torch.utils.data.DataLoader(
-        train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=2)
+        train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=6)
     valid_queue = torch.utils.data.DataLoader(
-        valid_data, batch_size=int(args.batch_size/2), shuffle=False, pin_memory=True, num_workers=2)
+        valid_data, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=6)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs))
     for epoch in range(args.epochs):
@@ -88,7 +87,6 @@ def main():
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
         train_acc, train_obj = train(train_queue, model, criterion, optimizer)
         logger.info('train_acc %f', train_acc)
-        torch.cuda.empty_cache()
         valid_acc, valid_obj = infer(valid_queue, model, criterion)
         logger.info('valid_acc %f', valid_acc)
         torch.cuda.empty_cache()
@@ -130,22 +128,20 @@ def infer(valid_queue, model, criterion):
     top1 = utils.AvgrageMeter()
     top5 = utils.AvgrageMeter()
     model.eval()
+    with torch.set_grad_enabled(False):
+        for step, (input, target) in enumerate(valid_queue):
+            input = input.cuda()
+            target = target.cuda(async=True)
+            logits, _ = model(input)
+            loss = criterion(logits, target)
+            prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
+            n = input.size(0)
+            objs.update(loss.item(), n)
+            top1.update(prec1.item(), n)
+            top5.update(prec5.item(), n)
 
-    for step, (input, target) in enumerate(valid_queue):
-        input = input.cuda()
-        target = target.cuda(async=True)
-
-        logits, _ = model(input)
-        loss = criterion(logits, target)
-
-        prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-        n = input.size(0)
-        objs.update(loss.item(), n)
-        top1.update(prec1.item(), n)
-        top5.update(prec5.item(), n)
-
-        if step % args.report_freq == 0:
-            logger.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+            if step % args.report_freq == 0:
+                logger.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
     return top1.avg, objs.avg
 
