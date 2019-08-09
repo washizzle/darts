@@ -3,6 +3,7 @@ import torch.nn as nn
 
 OPS = {
   'none' : lambda C, stride, affine: Zero(stride),
+  'identity' : lambda C, stride, affine: Identity(),
   'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
   'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
   'skip_connect' : lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),

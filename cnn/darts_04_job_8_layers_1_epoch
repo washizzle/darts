@@ -1,0 +1,5 @@
+#!/bin/bash
+source /home/TUE/s105605/miniconda3/etc/profile.d/conda.sh
+source activate wsdarts
+python train_search.py --unrolled --epochs=1
+source deactivate

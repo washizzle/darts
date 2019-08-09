@@ -3,6 +3,7 @@ import torch.nn as nn
 from operations import *
 from torch.autograd import Variable
 from utils import drop_path
+import torchvision.models as models  # added
 
 
 class Cell(nn.Module):
@@ -115,8 +116,23 @@ class NetworkCIFAR(nn.Module):
 
     stem_multiplier = 3
     C_curr = stem_multiplier*C
+    
+    #model_ft = models.vgg16(pretrained=True).features
+    #for i in range(30,15,-1):
+    #    model_ft.__delitem__(i)
+    #self.stem = model_ft
+    #C_prev_prev = 256
+    #C_prev = 256
+    #C_curr = 256
+    
+    grayscale = True #temporary, should be a variable thats set at the start of model_search, dependant on the dataset.
+    if grayscale:
+        dataset_depth = 1
+    else:
+        dataset_depth = 3
+    
     self.stem = nn.Sequential(
-      nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
+      nn.Conv2d(dataset_depth, C_curr, 3, padding=1, bias=False),
       nn.BatchNorm2d(C_curr)
     )
     
@@ -136,8 +152,8 @@ class NetworkCIFAR(nn.Module):
       if i == 2*layers//3:
         C_to_auxiliary = C_prev
 
-    if auxiliary:
-      self.auxiliary_head = AuxiliaryHeadCIFAR(C_to_auxiliary, num_classes)
+    #if auxiliary:
+   #   self.auxiliary_head = AuxiliaryHeadCIFAR(C_to_auxiliary, num_classes)
     self.global_pooling = nn.AdaptiveAvgPool2d(1)
     self.classifier = nn.Linear(C_prev, num_classes)
 
@@ -146,9 +162,9 @@ class NetworkCIFAR(nn.Module):
     s0 = s1 = self.stem(input)
     for i, cell in enumerate(self.cells):
       s0, s1 = s1, cell(s0, s1, self.drop_path_prob)
-      if i == 2*self._layers//3:
-        if self._auxiliary and self.training:
-          logits_aux = self.auxiliary_head(s1)
+      #if i == 2*self._layers//3:
+        #if self._auxiliary and self.training:
+          #logits_aux = self.auxiliary_head(s1)
     out = self.global_pooling(s1)
     logits = self.classifier(out.view(out.size(0),-1))
     return logits, logits_aux

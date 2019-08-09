@@ -1,0 +1,5 @@
+#!/bin/bash
+source /home/TUE/s105605/miniconda3/etc/profile.d/conda.sh
+source activate wsdartscuda9
+python train_search.py --dataset=fmnist --unrolled --layers=4 --epochs=20
+conda deactivate

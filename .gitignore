@@ -117,3 +117,10 @@ Session.vim
 *~
 # Auto-generated tag files
 tags
+
+*.out
+*.jpg
+*.png
+*.log
+.idea/
+data/

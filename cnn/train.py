@@ -16,6 +16,7 @@ from model import NetworkCIFAR as Network
 
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../../Data', help='location of the data corpus')
+parser.add_argument('--dataset', type=str, default='cifar', help='name of the dataset')
 parser.add_argument('--batch_size', type=int, default=72, help='batch size')
 parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -53,6 +54,31 @@ def main():
     torch.cuda.manual_seed(args.seed)
     logger.info('gpu device = %d' % args.gpu)
     logger.info("args = %s", args)
+    
+    CIFAR_CLASSES = 10
+    MNIST_CLASSES = 10
+    FMNIST_CLASSES = 10
+    CLASSES = CIFAR_CLASSES
+    train_transform, valid_transform = utils._data_transforms_cifar10(args)
+    TARGET_DATASET_TRAIN = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
+    TARGET_DATASET_VALID = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
+
+    if args.dataset == 'cifar': 
+        CLASSES = CIFAR_CLASSES
+        train_transform, valid_transform = utils._data_transforms_cifar10(args)
+        TARGET_DATASET_TRAIN = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
+        TARGET_DATASET_VALID = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
+    elif args.dataset == 'mnist': 
+        CLASSES = MNIST_CLASSES
+        train_transform, valid_transform = utils._data_transforms_cifar10(args)
+        TARGET_DATASET_TRAIN = dset.MNIST(root=args.data, train=True, download=True, transform=train_transform)
+        TARGET_DATASET_VALID = dset.MNIST(root=args.data, train=False, download=True, transform=valid_transform)
+    elif args.dataset == 'fmnist': 
+        CLASSES = FMNIST_CLASSES
+        train_transform, valid_transform = utils._data_transforms_cifar10(args)
+        TARGET_DATASET_TRAIN = dset.FashionMNIST(root=args.data, train=True, download=True, transform=train_transform)
+        TARGET_DATASET_VALID = dset.FashionMNIST(root=args.data, train=False, download=True, transform=valid_transform)
+
 
     genotype = eval("genotypes.%s" % args.arch)
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
@@ -70,10 +96,10 @@ def main():
         momentum=args.momentum,
         weight_decay=args.weight_decay
     )
-
-    train_transform, valid_transform = utils._data_transforms_cifar10(args)
-    train_data = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
-    valid_data = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
+    
+    #train_transform, valid_transform = utils._data_transforms_cifar10(args)
+    train_data = TARGET_DATASET_TRAIN
+    valid_data = TARGET_DATASET_VALID
 
     train_queue = torch.utils.data.DataLoader(
         train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=6)
@@ -104,9 +130,9 @@ def train(train_queue, model, criterion, optimizer):
         optimizer.zero_grad()
         logits, logits_aux = model(input)
         loss = criterion(logits, target)
-        if args.auxiliary:
-            loss_aux = criterion(logits_aux, target)
-            loss += args.auxiliary_weight * loss_aux
+        #if args.auxiliary:
+        #    loss_aux = criterion(logits_aux, target)
+        #    loss += args.auxiliary_weight * loss_aux
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()

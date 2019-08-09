@@ -52,10 +52,10 @@ class Architect(object):
   def _backward_step_unrolled(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer):
     model_unrolled = self._compute_unrolled_model(input_train, target_train, eta, network_optimizer)
     loss = model_unrolled._loss(input_valid, target_valid)
-    grads = torch.autograd.grad(loss, model_unrolled.arch_parameters(), retain_graph=True)
+    grads = torch.autograd.grad(loss, model_unrolled.arch_parameters(), allow_unused=True, retain_graph=True)#added allow_unused=True,
 
     theta = model_unrolled.parameters()
-    dtheta = torch.autograd.grad(loss, model_unrolled.parameters())
+    dtheta = torch.autograd.grad(loss, model_unrolled.parameters(), allow_unused=True) #added allow_unused=True
     vector = [dt.add(self.network_weight_decay, t).data for dt, t in zip(dtheta, theta)]
     implicit_grads = self._hessian_vector_product(model_unrolled, vector, input_train, target_train)
 
@@ -91,12 +91,12 @@ class Architect(object):
     for p, v in zip(model.parameters(), vector):
       p.data.add_(R, v)
     loss = model._loss(input, target)
-    grads_p = torch.autograd.grad(loss, model.arch_parameters())
+    grads_p = torch.autograd.grad(loss, model.arch_parameters(), allow_unused=True)#added allow_unused=True,
 
     for p, v in zip(model.parameters(), vector):
       p.data.sub_(2*R, v)
     loss = model._loss(input, target)
-    grads_n = torch.autograd.grad(loss, model.arch_parameters())
+    grads_n = torch.autograd.grad(loss, model.arch_parameters(), allow_unused=True)#added allow_unused=True,
 
     for p, v in zip(model.parameters(), vector):
       p.data.add_(R, v)
